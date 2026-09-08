@@ -1,0 +1,103 @@
+import * as cli from "std/cli";
+import * as io from "std/io";
+import * as json from "std/json";
+
+type Count {
+  public value: string,
+  public count: int,
+}
+
+fn increment(counts: Map<string, int>, value: string, limit: int): Result<void, string> {
+  const previous = counts.get(value);
+  if previous == None && counts.length() >= limit {
+    return Err($"Превышен лимит {limit} уникальных строк");
+  }
+  const number = match previous {
+    Some(count) => count + 1,
+    None => 1,
+  };
+  const _ = counts.put(value, number).mapError((error) => "Лимит коллекции")?;
+  return Ok();
+}
+
+fn collect(
+  name: string,
+  mode: string,
+  parsed: Request,
+  counts: Map<string, int>,
+  seen: Set<string>,
+): Result<void, string> {
+  const input = openInput(name)?;
+  defer closeInput(input);
+  while const line = readInput(input, parsed.maxLine)? {
+    if mode == "uniq" {
+      if !seen.contains(line) {
+        if seen.length() >= parsed.maxKeys {
+          return Err($"Превышен лимит {parsed.maxKeys} уникальных строк");
+        }
+        const _ = seen.add(line).mapError((error) => "Лимит коллекции")?;
+        emit(line)?;
+      }
+    } else {
+      increment(counts, line, parsed.maxKeys)?;
+    }
+  }
+  return Ok();
+}
+
+fn run(parsed: Request, mode: string, names: []string): Result<void, string> {
+  const counts = mapOf<string, int>();
+  const seen = setOf<string>();
+  for name in names {
+    collect(name, mode, parsed, counts, seen).mapError((error) => $"{name}: {error}")?;
+  }
+  if mode == "count" {
+    for entry in counts {
+      match entry {
+        (value, count) => {
+          const output = json.encode(Count { value, count }).mapError(
+            (error) => "Не удалось кодировать JSON",
+          )?;
+          io.writeBytes(output).mapError(io.message)?;
+          emit("")?;
+        },
+      };
+    }
+  }
+  return flush();
+}
+
+fn main(arguments: []string): int {
+  const parsed = match request(
+    arguments,
+    "marimay-frequency",
+    "Уникальные строки и частоты в порядке первого появления.",
+    [
+      cli.positional("mode", false, false, "uniq или count"),
+      cli.positional("input", false, true, "файлы либо - для stdin"),
+    ],
+  ) {
+    Ok(value) => value,
+    Err(error) => {
+      return fail("marimay-frequency", error, 2);
+    },
+  };
+  if parsed.help {
+    return match flush() {
+      Ok(_) => 0,
+      Err(error) => fail("marimay-frequency", error, 1),
+    };
+  }
+  const modes = cli.positionalValues(parsed.parsed, "mode");
+  const names = cli.positionalValues(parsed.parsed, "input");
+  if modes.length() != 1 || names.length() == 0 {
+    return fail("marimay-frequency", "Нужны РЕЖИМ и ФАЙЛ; см. --help", 2);
+  }
+  if modes[0] != "uniq" && modes[0] != "count" {
+    return fail("marimay-frequency", "Режим должен быть uniq или count", 2);
+  }
+  return match run(parsed, modes[0], names) {
+    Ok(_) => 0,
+    Err(error) => fail("marimay-frequency", error, 1),
+  };
+}

@@ -1,0 +1,57 @@
+@test
+fn updatesAtTheKeyLimitAndAliases(): void {
+  const counts = mapOf<string, int>();
+  const alias = counts;
+  expect.ok(increment(counts, "🌿", 1));
+  expect.ok(increment(alias, "🌿", 1));
+  expect.equal(counts.get("🌿"), Some(2));
+  expect.err(increment(counts, "новый", 1));
+  expect.equal(counts.length(), 1);
+  expect.equal(counts.remove("🌿"), Some(2));
+  expect.ok(increment(counts, "новый", 1));
+  counts.clear();
+  expect.err(increment(counts, "", 0));
+  expect.equal(counts.length(), 0);
+}
+
+@test
+fn firstSeenOrderAndReinsert(): void {
+  const counts = mapOf<string, int>();
+  expect.ok(increment(counts, "а", 3));
+  expect.ok(increment(counts, "б", 3));
+  expect.ok(increment(counts, "а", 3));
+  const order: []string = [];
+  for pair in counts {
+    match pair {
+      (key, count) => {
+        expect.ok(order.push(key));
+      },
+    };
+  }
+  expect.equal(order[0], "а");
+  expect.equal(order[1], "б");
+  expect.equal(counts.remove("а"), Some(2));
+  expect.ok(increment(counts, "а", 3));
+  const next: []string = [];
+  for pair in counts {
+    match pair {
+      (key, count) => {
+        expect.ok(next.push(key));
+      },
+    };
+  }
+  expect.equal(next[0], "б");
+  expect.equal(next[1], "а");
+}
+
+@test
+fn setDuplicateDeleteReinsert(): void {
+  const seen = setOf<string>();
+  const alias = seen;
+  expect.equal(seen.add(""), Ok(true));
+  expect.equal(alias.add(""), Ok(false));
+  expect.equal(seen.remove(""), true);
+  expect.equal(seen.remove(""), false);
+  expect.equal(alias.add(""), Ok(true));
+  expect.equal(seen.length(), 1);
+}

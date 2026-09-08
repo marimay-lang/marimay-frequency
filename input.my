@@ -1,0 +1,118 @@
+import * as cli from "std/cli";
+import * as convert from "std/convert";
+import * as fs from "std/fs";
+import * as io from "std/io";
+import * as path from "std/path";
+
+type Request {
+  public parsed: cli.Parsed,
+  public help: bool,
+  public maxLine: int,
+  public maxKeys: int,
+}
+
+type Input {
+  public file: Option<fs.File>,
+}
+
+fn readInput(input: Input, limit: int): Result<Option<string>, string> {
+  if const file = input.file {
+    return fs.readLine(file, limit).mapError(fs.message);
+  }
+  return io.readLine(limit).mapError(io.message);
+}
+
+fn openInput(name: string): Result<Input, string> {
+  if name == "-" {
+    return Ok(Input { file: None });
+  }
+  const filePath = path.fromString(name).mapError((error) => "Недопустимый путь")?;
+  return Ok(Input { file: Some(fs.open(filePath).mapError(fs.message)?) });
+}
+
+fn closeInput(input: Input): void {
+  if const file = input.file {
+    fs.closeBestEffort(file);
+  }
+}
+
+fn boundedOption(
+  parsed: cli.Parsed,
+  name: string,
+  fallback: int,
+  ceiling: int,
+): Result<int, string> {
+  const values = cli.occurrences(parsed, name);
+  if values.length() == 0 {
+    return Ok(fallback);
+  }
+  const spelling = match values[0] {
+    Some(value) => value,
+    None => "",
+  };
+  const value = convert.parseInt(spelling).mapError((error) => $"--{name}: ожидается целое число")?;
+  if value < 0 || value > ceiling {
+    return Err($"--{name}: допустимо 0..{ceiling}");
+  }
+  return Ok(value);
+}
+
+fn request(
+  arguments: []string,
+  program: string,
+  description: string,
+  positions: []cli.PositionalSpec,
+): Result<Request, string> {
+  const parser = cli.newParser(
+    program,
+    description,
+    [
+      cli.flagOption("help", Some("h"), false, false, "Показать справку"),
+      cli.requiredValueOption(
+        "max-line",
+        None,
+        "БАЙТЫ",
+        false,
+        false,
+        "0..1048576; по умолчанию 65536",
+      ),
+      cli.requiredValueOption(
+        "max-keys",
+        None,
+        "КЛЮЧИ",
+        false,
+        false,
+        "0..65536; по умолчанию 65536",
+      ),
+    ],
+    positions,
+    cli.defaultLimits(),
+  ).mapError(cli.message)?;
+  const parsed = cli.parse(parser, arguments).mapError(cli.message)?;
+  const help = cli.count(parsed, "help") != 0;
+  if help {
+    io.println(cli.help(parser, 80).mapError(cli.message)?).mapError(io.message)?;
+  }
+  return Ok(
+    Request {
+      parsed,
+      help,
+      maxLine: boundedOption(parsed, "max-line", 65536, 1048576)?,
+      maxKeys: boundedOption(parsed, "max-keys", 65536, 65536)?,
+    },
+  );
+}
+
+fn emit(line: string): Result<void, string> {
+  return io.println(line).mapError(io.message);
+}
+
+fn fail(program: string, message: string, status: int): int {
+  const _ = io.eprintln($"{program}: {message}");
+  const _ = io.flushStderr();
+  return status;
+}
+
+fn flush(): Result<void, string> {
+  return io.flushStdout().mapError(io.message);
+}
