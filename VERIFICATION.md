@@ -1,34 +1,36 @@
-# Локальная проверка D101, 2026-09-08
+# Historical local D101 verification — 2026-09-08
 
-3 исходных теста проходят с `mmay test . --engine both`.
-Приёмка: 26 сценариев с точными status/stdout/stderr для VM,
-Native Debug и Native Release (denied-сборка — VM и Native Release),
-плюс 3 закрытые трубы. Есть Unicode/CRLF/final line, ограничения, ошибки,
-symlink, отказ capability и вход 2097152 байта. frequency/logstats дополнительно
-проверяют 4096 разных ключей. Входы остаются неизменными.
+This translates the original local record; it does not report a new run.
 
-| Сценарий | Native Release | VM |
+3 source tests passed with `mmay test . --engine both`. Acceptance covered
+26 exact status/stdout/stderr scenarios in VM, Native Debug and Native
+Release (denied builds used VM and Native Release), plus 3 closed pipes.
+Cases include Unicode, CRLF, final lines, limits, errors, symlinks, capability
+denial and 2097152-byte input. Frequency/logstats additionally cover 4096
+distinct keys. Input files remained unchanged.
+
+| Scenario | Native Release | VM |
 |---|---:|---:|
-| 2 МиБ, медиана 3 запусков | 31.23 мс | 270.29 мс |
-| 20 МиБ, один запуск | 269.86 мс | 934.07 мс |
-| Peak RSS на 20 МиБ | 37.14 МиБ | 50.19 МиБ |
+| 2 MiB, median of 3 runs | 31.23 ms | 270.29 ms |
+| 20 MiB, one run | 269.86 ms | 934.07 ms |
+| Peak RSS at 20 MiB | 37.14 MiB | 50.19 MiB |
 
-Повторный both-test цикл: 339.33 мс.
-Первый native запуск сразу после build: **385.38 мс**, выше прежнего
-бюджета 100 мс. Последующие запуски проходят бюджет. Контрольные C17-программы
-без Marimay провели 370–512 мс до main; причина конкретной подсистемы запуска
-не доказана. Производительная приёмка первого запуска остаётся заблокированной.
-Ни бюджет, ни данные, ни безопасность macOS не менялись.
+Repeated test-both cycle: 339.33 ms. The first native execution immediately
+after build was **385.38 ms**, above the fixed 100 ms budget; subsequent
+executions met it. Control C17 programs without Marimay spent 370–512 ms before
+main, but the exact startup subsystem responsible was not established.
+First-execution performance acceptance remained blocked. Budgets, data and
+macOS security settings were unchanged.
 
-Это macOS arm64, компилятор Release с D101, управляемая куча 32 МиБ,
-последовательные измерения после compiler verification. Фоновые приложения
-рабочего стола оставались запущены. Это не disk-cold или полностью idle-host
-исследование и не Tier 1-complete evidence. Медианы 2 МиБ не являются профилем
-всех форматов и всех распределений ключей.
+The host was macOS arm64, Release compiler with D101, managed heap 32 MiB,
+with sequential measurements after compiler verification and ordinary desktop
+background applications. This was not a disk-cold/fully idle-host study or
+Tier 1-complete evidence. The 2 MiB medians do not characterize every format
+or key distribution.
 
-Отчёты находятся в `build/acceptance/report.json` и
-`build/measure-1788863919106864000/report.json`; snapshots/хеши сохраняются также в
-`marimay/docs/implementation/evidence/cp42-file-lines-2026-09-08.json`.
+Reports: `build/acceptance/report.json` and `build/measure-1788863919106864000/report.json`.
+Snapshots/hashes were also recorded in the language repository under
+`docs/implementation/evidence/cp42-file-lines-2026-09-08.json`.
 Compiler SHA-256: `076f9fce9bec61bb1fc7e4cf54934311a893246dcdd230c830c9b62111bcaf9c`.
 Native SHA-256: `85bb5b75c4afbb131f1ef6e3726b167b99bcf177c6f66869b391195e3910ebe4`.
-Остальные открытые gates перечислены в ERGONOMICS.md и портфеле CP42.
+Other open gates are listed in `ERGONOMICS.md` and the CP42 portfolio.

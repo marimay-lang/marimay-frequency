@@ -1,48 +1,47 @@
-# marimay-frequency — Уникальные строки и частоты
+# marimay-frequency
 
-Самостоятельная CLI-утилита на Marimay. Нужен компилятор с D101
-(`std/fs.readLine`) и исправлением native-кэша записей из того же изменения.
-Это локальная реализация CP42; полная платформенная и производительная
-приёмка ещё не завершена. Бизнес-логика находится в `main.my`, ввод и CLI —
-в `input.my`; Python только запускает проверки и измерения.
+![Unique lines and counts — a Marimay learning project](.github/banner.svg)
+
+> **Personal learning project.** This open-source MIT project is part of
+> [Marimay](https://github.com/marimay-lang/marimay), my hobby programming-language project.
+> I maintain it in my spare time to learn by building. APIs and tooling may
+> change, and progress may be intermittent.
+
+A UTF-8 line utility with `uniq` and `count` modes. Unique lines retain first-seen order; `count` emits JSON Lines with `value` and `count` fields.
+
+**Status:** Experimental Marimay learning application. Process acceptance scripts exercise
+VM and native Debug/Release execution. Full platform and performance acceptance
+remain in progress; existing reports retain their recorded revisions and limits.
+
+## Run and verify
 
 ```sh
+mmay run . -- --help
+mmay run . --allow-read . -- count fixtures/sample.txt
 mmay fmt . --check
 mmay check .
 mmay test . --engine both
-mmay run . --allow-read . -- count fixtures/sample.txt
-mmay run . -- --help
+MMAY="$(command -v mmay)" python3 tools/acceptance.py
+mkdir -p build
 mmay build . --release --allow-read . --output build/marimay-frequency
-build/marimay-frequency count fixtures/sample.txt
-python3 tools/acceptance.py
-python3 tools/measure.py
 ```
 
-Файл `-` означает stdin; несколько файлов читаются последовательно. Если `-`
-указан повторно, это тот же поток, уже потреблённый предыдущим чтением.
-Пути при native build разрешаются явным `--allow-read`; grants встроены в
-артефакт. Утилита ничего не записывает во входные файлы и не следует symlink.
-Опции приложения идут после `--` у `mmay run`. Шаблон или имя, начинающееся
-с `-`, можно передать после ещё одного `--` парсера приложения.
+Install a compatible `mmay` and use its matching standard library. Application
+arguments follow `--` in `mmay run`. Filesystem and environment access requires
+explicit grants; native grants are selected at build time.
 
-`uniq ФАЙЛ...` печатает каждую строку один раз, в порядке первого появления.
-`count ФАЙЛ...` выдаёт JSON Lines: `{"value":"строка","count":2}` в том же
-порядке. Равные счётчики порядок не меняют; строки сравниваются побайтно,
-без Unicode-нормализации. Данные всех файлов объединяются в порядке аргументов.
-`--max-keys N` ограничивает уникальные строки: 0..65536, по умолчанию 65536.
-Повтор существующего ключа разрешён при заполненном лимите. `uniq` уже мог
-вывести префикс до ошибки; `count` начинает вывод после успешного чтения всех
-входов. Коды: 0 — успех, 1 — данные/I/O/лимит, 2 — аргументы. Память ограничена
-числом уникальных строк и их длиной; повторный вход не хранится целиком.
+Multiple inputs are read in argument order; `-` selects stdin. Lines are compared
+byte-for-byte. `--max-line` bounds line length and `--max-keys` bounds unique
+values. Counting publishes its result after every input has been read successfully.
 
-Вход строго UTF-8. LF и CRLF удаляются, одиночный CR и NUL сохраняются,
-последняя строка без LF обрабатывается; пустой файл не содержит строк.
-`--max-line N` задаёт 0..1048576 байт одной строки после удаления CRLF,
-по умолчанию 65536. Суммарный размер файлов этим лимитом не ограничен.
-Ошибка не выдаёт часть невалидной строки. Вывод и диагностика идут в
-раздельные stdout/stderr; закрытая труба даёт ненулевой статус.
+Python generates synthetic inputs and drives independent process checks;
+application logic is written in Marimay. `MMAY=/absolute/path/to/mmay` selects
+the compiler for Python drivers. `python3 tools/measure.py` runs the existing
+measurement harness and writes local reports under `build/`.
 
-[Бюджеты](BUDGETS.md) установлены до замеров. [Находки](ERGONOMICS.md) отделяют
-дефекты языка от выбранного формата приложения. Свежая приёмка сохраняет
-`build/acceptance/report.json` с хешами compiler/artifacts и exact bytes;
-измерения — отдельный отчёт. Наборы данных синтетические. Remote не настроен.
+See [`BUDGETS.md`](BUDGETS.md), [`ERGONOMICS.md`](ERGONOMICS.md), [`VERIFICATION.md`](VERIFICATION.md) for project-specific budgets,
+findings and historical verification details.
+
+## License
+
+[MIT](LICENSE). Existing copyright attribution is retained.

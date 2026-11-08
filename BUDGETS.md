@@ -1,22 +1,23 @@
-# Бюджеты до измерения
+# Budgets defined before measurement
 
-Локальный CLI0, macOS arm64; компилятор Release, приложение Native Release.
-Малый вход — fixtures/sample.txt. Большой `stream-2m-v1` — 16384 строки по
-128 байт, ровно 2097152 байта. grep ищет отсутствующую подстроку; frequency
-считает повторяющуюся строку; logstats считает INFO и одно событие. Входы
-генерирует tools/acceptance.py; реальные значения пользователя не читаются.
+Local CLI0, macOS arm64; Release compiler and Native Release application.
+The small input is `fixtures/sample.txt`. `stream-2m-v1` has 16384 lines of
+128 bytes, exactly 2097152 bytes. Grep searches for an absent substring;
+frequency counts a repeated line; logstats counts INFO and one event.
+`tools/acceptance.py` generates synthetic inputs without reading user values.
 
-- Малый первый и повторный native запуск: ≤100 мс; `mmay run`: ≤500 мс.
-- Повторный `mmay test . --engine both`: ≤2 с, с готовым native-кэшем.
-- Большой вход: native ≤2 с, VM ≤20 с; полный процесс, включая запуск.
-- `stream-20m-v1`: 163840 тех же строк (20 МиБ), native ≤20 с, VM ≤200 с;
-  число уникальных ключей прежнее. Это дополнительная проверка роста, бюджет
-  исходного 2 МиБ набора сохранён.
-- Peak RSS: native ≤128 МиБ, VM ≤256 МиБ.
-- Приёмка потока проходит также с 32 МиБ управляемой кучи. Это отдельная
-  граница, не RSS. Для проверки роста повторять тот же набор десять раз
-  при неизменном числе уникальных ключей, сохраняя эти лимиты памяти.
+- Small first and repeated native execution: ≤100 ms; `mmay run`: ≤500 ms.
+- Repeated `mmay test . --engine both`: ≤2 s with a ready native cache.
+- Large input: native ≤2 s, VM ≤20 s, including process startup.
+- `stream-20m-v1`: 163840 of the same lines (20 MiB), native ≤20 s, VM ≤200 s,
+  with the same unique-key count. This additional growth check retains the
+  original 2 MiB budget.
+- Peak RSS: native ≤128 MiB, VM ≤256 MiB.
+- Streaming acceptance also runs with a 32 MiB managed heap, separately from
+  RSS. For growth checks, repeat the same input ten times with unchanged
+  unique-key count and the same memory limits.
 
-Первые измерения сохраняются отдельно от функционального прогона. Эти
-бюджеты не отменяют CP42/Tier 1; первый запуск после build не предварительно
-прогревается. Промах блокирует соответствующую приёмку, а не меняет бюджет.
+Initial measurements are stored separately from functional acceptance. These
+budgets do not close CP42/Tier 1. The first execution after build is not warmed
+in advance. A miss blocks the affected acceptance rather than changing its
+budget.
